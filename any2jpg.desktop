@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=any2jpg
+GenericName=Convertitore di immagini in JPG
+Comment=Converte qualsiasi immagine in JPG con qualità e metadati a scelta
+Exec=@BIN@ %F
+Icon=image-x-generic
+Terminal=false
+Categories=Graphics;Photography;
+MimeType=image/png;image/webp;image/heic;image/heif;image/avif;image/tiff;image/bmp;image/gif;image/x-tga;image/x-icon;image/jpeg;
+StartupWMClass=any2jpg
