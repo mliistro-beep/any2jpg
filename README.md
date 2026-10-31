@@ -3,7 +3,7 @@
 Semplice applicazione grafica per Linux che converte immagini di qualsiasi formato in JPG,
 singolarmente o per cartelle intere, con controllo della qualità e dei metadati.
 
-> **Versione 0.2 beta**: funziona, ma è ancora in fase di test. Segnala i problemi nelle
+> **Versione 0.3 beta**: funziona, ma è ancora in fase di test. Segnala i problemi nelle
 > [issue](https://github.com/mliistro-beep/any2jpg/issues).
 
 ![Finestra di any2jpg](docs/screenshot.png)
@@ -13,8 +13,15 @@ singolarmente o per cartelle intere, con controllo della qualità e dei metadati
 - **Formati in ingresso**: HEIC/HEIF (foto iPhone), AVIF, PNG, WebP, TIFF, BMP, GIF, TGA, ICO,
   PPM, PSD e tutti gli altri formati letti da [Pillow](https://pillow.readthedocs.io/).
 - **Qualità JPG** regolabile da 1 a 100.
+- **Ridimensionamento** facoltativo: riduce le immagini il cui lato lungo supera la misura scelta,
+  mantenendo le proporzioni e senza mai ingrandire quelle più piccole.
 - **Conversione per cartelle**, con o senza sottocartelle. Si possono anche trascinare file e
   cartelle nella finestra.
+- **Anteprime**: miniature nella lista e un pannello con l'immagine selezionata, formato,
+  dimensioni in pixel e peso del file (anche per HEIC e AVIF).
+- **Veloce**: converte più file in parallelo, sfruttando tutti i core del processore.
+- **Riepilogo finale** con i file convertiti, il peso prima e dopo e un pulsante per aprire la
+  cartella di destinazione.
 - **Metadati**:
   - mantenere quelli originali (EXIF, XMP) oppure rimuoverli tutti (data, fotocamera, GPS…);
   - impostare a mano **autore** e **copyright**, scritti sia in EXIF (Artist, Copyright) sia in
@@ -23,6 +30,8 @@ singolarmente o per cartelle intere, con controllo della qualità e dei metadati
   a scelta, dove viene ricreata la struttura delle sottocartelle.
 - **Nessun file perso**: l'originale non viene mai toccato e i JPG già esistenti non vengono
   sovrascritti (si aggiunge `_1`, `_2`…), a meno di attivare l'opzione apposita.
+- **Data dei file**: il JPG può mantenere la data di modifica dell'originale, così resta in
+  ordine nei programmi che ordinano le foto per data.
 - Gestisce trasparenza (sfondo bianco), rotazione EXIF, CMYK, immagini a 16 bit e profili colore.
 
 ## Installazione

@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,7 @@ from any2jpg.converter import (
     TAG_ORIENTATION,
     MetadataOptions,
     convert_file,
+    make_preview,
     plan_destination,
     scan_folder,
     supported_extensions,
@@ -163,6 +165,67 @@ def test_scan_folder(tmp_path):
     assert scan_folder(tmp_path, recursive=False) == [tmp_path / "a.png"]
     assert scan_folder(tmp_path, recursive=True) == [tmp_path / "a.png", tmp_path / "sub" / "c.webp"]
     assert tmp_path / "b.JPG" in scan_folder(tmp_path, recursive=False, include_jpeg=True)
+
+
+def test_max_side_shrinks_keeping_ratio(tmp_path):
+    source = tmp_path / "grande.png"
+    Image.new("RGB", (400, 100)).save(source)
+    convert_file(source, tmp_path / "out.jpg", 90, MetadataOptions(), max_side=200)
+    assert Image.open(tmp_path / "out.jpg").size == (200, 50)
+
+
+def test_max_side_never_enlarges(tmp_path):
+    source = tmp_path / "piccola.png"
+    Image.new("RGB", (40, 10)).save(source)
+    convert_file(source, tmp_path / "out.jpg", 90, MetadataOptions(), max_side=200)
+    assert Image.open(tmp_path / "out.jpg").size == (40, 10)
+
+
+def test_max_side_applies_after_exif_rotation(tmp_path):
+    exif = Image.Exif()
+    exif[TAG_ORIENTATION] = 6
+    source = tmp_path / "ruotata.jpg"
+    Image.new("RGB", (400, 100)).save(source, exif=exif)
+    convert_file(source, tmp_path / "out.jpg", 90, MetadataOptions(), max_side=200)
+    assert Image.open(tmp_path / "out.jpg").size == (50, 200)
+
+
+def test_keep_mtime(tmp_path):
+    source = tmp_path / "vecchia.png"
+    Image.new("RGB", (8, 8)).save(source)
+    old = 1_600_000_000_000_000_000  # settembre 2020, in nanosecondi
+    os.utime(source, ns=(old, old))
+    convert_file(source, tmp_path / "a.jpg", 90, MetadataOptions(), keep_mtime=True)
+    convert_file(source, tmp_path / "b.jpg", 90, MetadataOptions())
+    assert (tmp_path / "a.jpg").stat().st_mtime_ns == old
+    assert (tmp_path / "b.jpg").stat().st_mtime_ns > old
+
+
+def test_preview_fits_and_reports_original_size(tmp_path):
+    source = tmp_path / "p.png"
+    Image.new("RGBA", (400, 200), (0, 0, 255, 0)).save(source)
+    preview = make_preview(source, 100)
+    assert preview.image.size == (100, 50)
+    assert preview.image.mode == "RGB"
+    assert (preview.width, preview.height, preview.format) == (400, 200, "PNG")
+
+
+def test_preview_of_rotated_jpeg(tmp_path):
+    exif = Image.Exif()
+    exif[TAG_ORIENTATION] = 6
+    source = tmp_path / "r.jpg"
+    Image.new("RGB", (400, 200)).save(source, exif=exif)
+    preview = make_preview(source, 100)
+    assert preview.image.size == (50, 100)
+    assert (preview.width, preview.height) == (200, 400)
+
+
+def test_preview_of_16bit_image(tmp_path):
+    source = tmp_path / "g.png"
+    Image.new("I;16", (64, 64), 65535).save(source)
+    preview = make_preview(source, 32)
+    assert preview.image.mode == "L"
+    assert preview.image.getpixel((0, 0)) == pytest.approx(255, abs=2)
 
 
 def test_failed_conversion_leaves_no_partial_file(tmp_path):

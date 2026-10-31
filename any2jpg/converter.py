@@ -104,14 +104,45 @@ def plan_destination(
     return candidate
 
 
+@dataclass(frozen=True)
+class Preview:
+    """Anteprima ridotta di un'immagine, con i dati dell'originale."""
+
+    image: Image.Image  # RGB o L, già raddrizzata e senza trasparenza
+    width: int  # dimensioni dell'originale, dopo la rotazione EXIF
+    height: int
+    format: str
+
+
+def make_preview(source: Path, size: int, background: tuple[int, int, int] = WHITE) -> Preview:
+    """Crea un'anteprima che sta in un quadrato di size pixel (mai ingrandita)."""
+    with Image.open(source) as original:
+        width, height = original.size
+        if original.getexif().get(TAG_ORIENTATION, 1) in (5, 6, 7, 8):
+            width, height = height, width
+        format_ = original.format or ""
+        # Per i JPEG decodifica direttamente a risoluzione ridotta: molto più veloce.
+        original.draft("RGB", (size, size))
+        image = ImageOps.exif_transpose(original)
+        image, _ = _to_jpeg_mode(image, None, background)
+    image.thumbnail((size, size), Image.Resampling.LANCZOS)
+    return Preview(image, width, height, format_)
+
+
 def convert_file(
     source: Path,
     destination: Path,
     quality: int,
     metadata: MetadataOptions,
     background: tuple[int, int, int] = WHITE,
+    max_side: int = 0,
+    keep_mtime: bool = False,
 ) -> None:
-    """Converte source in un JPEG scritto in destination (scrittura atomica)."""
+    """Converte source in un JPEG scritto in destination (scrittura atomica).
+
+    max_side > 0 riduce l'immagine perché il lato lungo non superi quel valore
+    (non la ingrandisce mai). keep_mtime copia la data di modifica dell'originale.
+    """
     with Image.open(source) as original:
         # Ruota i pixel secondo l'orientamento EXIF e rimuove il tag.
         image = ImageOps.exif_transpose(original)
@@ -119,6 +150,9 @@ def convert_file(
         icc = image.info.get("icc_profile")
         dpi = image.info.get("dpi")
         image, icc = _to_jpeg_mode(image, icc, background)
+    if max_side > 0:
+        # thumbnail() riduce soltanto e mantiene le proporzioni.
+        image.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
 
     params: dict = {"quality": quality, "optimize": True}
     if exif:
@@ -135,6 +169,9 @@ def convert_file(
     try:
         with open(partial, "xb") as handle:
             image.save(handle, "JPEG", **params)
+        if keep_mtime:
+            stat = source.stat()
+            os.utime(partial, ns=(stat.st_atime_ns, stat.st_mtime_ns))
         os.replace(partial, destination)
     except BaseException:
         partial.unlink(missing_ok=True)
